@@ -1,0 +1,15 @@
+{
+    "author": "fabiorzfreitas",
+    "compatibility": [
+        2
+    ],
+    "description": "This plugin removes subtitles and most metadata from a file, checks if the first audio stream is AC3 (if not, it will transcode and append to the same file an AC3 stream as the first audio stream), checks if video is x264 (if not, a new file will be created, much like Plex's optimized versions, the source file won't be deleted) and remuxes everything to mkv.",
+    "icon": "",
+    "id": "fabiorzfreitas_preset",
+    "name": "fabiorzfreitas preset",
+    "priorities": {
+        "on_worker_process": 0
+    },
+    "tags": "",
+    "version": "0.0.1"
+}
