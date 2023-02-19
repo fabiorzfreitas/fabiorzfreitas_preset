@@ -3,7 +3,7 @@
 
 import logging
 
-from lib.ffmpeg import Probe, Parser, StreamMapper
+from fabiorzfreitas_preset.lib.ffmpeg import Probe, Parser, StreamMapper
 
 # Configure plugin logger
 logger = logging.getLogger("Unmanic.Plugin.fabiorzfreitas_preset")
