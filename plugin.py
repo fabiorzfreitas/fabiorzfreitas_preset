@@ -3,6 +3,8 @@
 
 import logging
 
+import os
+import sys
 from fabiorzfreitas_preset.lib.ffmpeg import Probe, Parser, StreamMapper
 
 # Configure plugin logger
@@ -47,7 +49,7 @@ def on_library_management_file_test(data):
                 shared_info['video_stream_index'] = stream['index']
         # This doesn't return yet, as a match with other cases is still possible
 
-    if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data[1]['codec_name'] != 'ac3':
+    if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data['streams'][1]['codec_name'] != 'ac3':
         
         logger.debug(f'File {abspath} does not have ac3 as the first audio stream, adding to queue')
         data['add_file_to_pending_tasks'] = True
@@ -99,8 +101,11 @@ def on_worker_process(data):
     
     """
 
-    abspath = data['original_file_path']
     file_in = data['file_in']
+    data['path'] = data['original_file_path']
+    data['file_out'] = 'C:\\Users\\Fabio\\Desktop\\samples\\cache.mkv'
+    file_out = data['file_out']
+
 
     # Get file probe
     probe = Probe.init_probe(data, logger, allowed_mimetypes=['video'])
@@ -109,6 +114,9 @@ def on_worker_process(data):
         return
 
     ffprobe_data = probe.get_probe()
+
+    # Get the path to the file
+    abspath = data.get('original_file_path')
 
     # Set the parser
     parser = Parser(logger)
@@ -121,14 +129,14 @@ def on_worker_process(data):
         
         for stream in data['streams']:
             if stream['codec_type'] == 'video':
-                data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_in}'
+                data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
 
         # This doesn't return yet, as a match with other cases is still possible
 
-    if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data[1]['codec_name'] != 'ac3':
+    if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data['streams'][1]['codec_name'] != 'ac3':
         
         logger.debug(f'File {abspath} does not have ac3 as the first audio stream, processing')
-        data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a:0 -c:a:0 ac3 -map 0:a:0 -c:a:1 copy -sn -map_metadata -1 -map_chapters -1 {file_in}'
+        data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a:0 -c:a:0 ac3 -map 0:a:0 -c:a:1 copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
         
         return
 
@@ -137,15 +145,42 @@ def on_worker_process(data):
        if stream['codec_type'] == 'subtitle':
             
             logger.debug(f'File {abspath} has subtitles, processing')
-            data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_in}'
+            data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
             
             return
        
        if stream['codec_type'] != 'audio':
 
             logger.debug(f'File {abspath} has non-audio, non-subtitle stream, likely an attachment, processing')
-            data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_in}'
+            data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 -c:v:0 copy -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
 
             return
+
+    return
+
+
+def on_postprocessor_file_movement(data):
+    """
+    Runner function - configures additional postprocessor file movements during the postprocessor stage of a task.
+
+    The 'data' object argument includes:
+        source_data             - Dictionary containing data pertaining to the original source file.
+        remove_source_file      - Boolean, should Unmanic remove the original source file after all copy operations are complete.
+        copy_file               - Boolean, should Unmanic run a copy operation with the returned data variables.
+        file_in                 - The converted cache file to be copied by the postprocessor.
+        file_out                - The destination file that the file will be copied to.
+
+    :param data:
+    :return:
+    """
+
+    data['remove_source_file'] = False
+    data['copy_file'] = True
+    data['run_default_file_copy'] = False
+
+    source_dir = f"{os.path.split(data['source_data']['abspath'])[0]}"
+    source_dir_replaced = source_dir.replace('\\', '\\\\')
+
+    data['file_out'] = f'{source_dir_replaced}\\test.mkv'
 
     return

@@ -8,8 +8,10 @@
     "id": "fabiorzfreitas_preset",
     "name": "fabiorzfreitas preset",
     "priorities": {
-        "on_worker_process": 0
+        "on_worker_process": 0,
+        "on_library_management_file_test": 0,
+        "on_postprocessor_file_movement": 0
     },
     "tags": "",
-    "version": "0.0.1"
+    "version": "0.1.0"
 }
