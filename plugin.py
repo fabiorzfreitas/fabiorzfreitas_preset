@@ -35,8 +35,18 @@ import logging
 import os
 from fabiorzfreitas_preset.lib.ffmpeg import Probe, Parser, StreamMapper
 
-# Configure plugin logger
+# Configures plugin logger
 logger = logging.getLogger("Unmanic.Plugin.fabiorzfreitas_preset")
+
+# Formats logger output
+def logger_output(line):
+    line_len = '-' * len(line)
+
+    logger.debug(line_len)
+    logger.debug(line)
+    logger.debug(line_len)
+
+    return
 
 
 def on_library_management_file_test(data):
@@ -53,43 +63,33 @@ def on_library_management_file_test(data):
     :return:
     """
     
+    # Sets working path
     abspath = data.get('path')
 
-    line = f'Testing file {abspath}'
-    line_len = '-' * len(line)
+    line = f'[TESTING] Testing file {abspath}'
+    logger_output(line)
 
-    logger.debug(line_len)
-    logger.debug(line)
-    logger.debug(line_len)
-
+    # Skips cache files
     if os.path.basename(abspath).split('.')[-2] == 'cache':
         
-        line = f'File {abspath} is cache, skipping'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} is cache, skipping'
+        logger_output(line)
         
         data['add_file_to_pending_tasks'] = False
 
         return
 
-
+    # Skips .part files
     if os.path.splitext(abspath)[1] == '.part':
         
-        line = f'File {abspath} extension is .part, skipping'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} extension is .part, skipping'
+        logger_output(line)
         
         data['add_file_to_pending_tasks'] = False
 
         return
 
-    # Get file probe
+    # Gets file probe
     probe = Probe.init_probe(data, logger, allowed_mimetypes=['video'])
     if not probe:
         # File not able to be probed by ffprobe
@@ -97,63 +97,51 @@ def on_library_management_file_test(data):
 
     ffprobe_data = probe.get_probe()
 
-    # Get the path to the file
-
+    # Defines paths and shared_info
     shared_info = {}
-
     source_dirpath = f"{os.path.split(data['path'])[0]}"
     source_dirpath_replaced = source_dirpath.replace('\\', '/')
     show_dir = source_dirpath_replaced.split('/')[-2]
     basename = f"{os.path.split(data['path'])[1]}"
 
+    # Tests if file is already in Optimized folder
     if show_dir == 'Optimized for TV' or os.path.exists(f'{source_dirpath_replaced}/Plex Versions/Optimized for TV/{show_dir}/{basename}'):
 
-        line = f'File {abspath} already has been optimized, skipping'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} already has been optimized, skipping'
+        logger_output(line)
         
         data['add_file_to_pending_tasks'] = False
 
         return
     
+    # Tests if container is .mkv
+    # A second pass will be needed if this matches
     if os.path.splitext(abspath)[1] != '.mkv':
 
-        line = f'File {abspath} container is not .mkv, adding to queue'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} container is not .mkv, adding to queue'
+        logger_output(line)
 
         data['add_file_to_pending_tasks'] = True
         shared_info['container_is_not_mkv'] = True
 
         return
 
+    # Checks the first video stream for x264
     for stream in ffprobe_data['streams']:
         
         if stream['codec_type'] == 'video' and stream['codec_name'] != 'h264':
 
-            line = f'File {abspath} video stream is not x264, adding to queue'
-            line_len = '-' * len(line)
-
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[TESTING] File {abspath} video stream is not x264, adding to queue'
+            logger_output(line)
 
             shared_info['non_h264'] = True
+            # This function doesn't return yet, as the file still needs to be checked for audio
 
+    # Checks if the video stream is the first stream
     if ffprobe_data['streams'][0]['codec_type'] != 'video':
         
-        line = f'File {abspath} does not have video as the first stream, adding to queue'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} does not have video as the first stream, adding to queue'
+        logger_output(line)
         
         data['add_file_to_pending_tasks'] = True
         
@@ -162,45 +150,38 @@ def on_library_management_file_test(data):
                 shared_info['non_0_video_stream'] = True
                 shared_info['video_stream_index'] = stream['index']
                 
-                return
+                break
+                # This function doesn't return yet, as the file still needs to be checked for audio
 
+    # Checks if first audio stream is ac3
     if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data['streams'][1]['codec_name'] != 'ac3':
         
-        line = f'File {abspath} does not have ac3 as the first audio stream, adding to queue'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} does not have ac3 as the first audio stream, adding to queue'
+        logger_output(line)
 
         data['add_file_to_pending_tasks'] = True
         shared_info['first_audio_is_not_ac3'] = True
         
         return
-
+    
+    # Checks if there are chapters
     if ffprobe_data['chapters'] != []:
 
-        line = f'File {abspath} has chapters, processing'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[TESTING] File {abspath} has chapters, processing'
+        logger_output(line)
 
         data['add_file_to_pending_tasks'] = True
         shared_info['has_chapters'] = True
 
+        return
 
+    # Checks streams for subtitles, attachments and metadata
     for stream in ffprobe_data['streams']:
        
         if stream['codec_type'] == 'subtitle':
             
-            line = f'File {abspath} has subtitles, adding to queue'
-            line_len = '-' * len(line)
-    
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[TESTING] File {abspath} has subtitles, adding to queue'
+            logger_output(line)
 
             data['add_file_to_pending_tasks'] = True
             shared_info['has_subtitles'] = True
@@ -209,12 +190,8 @@ def on_library_management_file_test(data):
        
         if stream['codec_type'] != 'audio' and stream['codec_type'] != 'video':
 
-            line = f'File {abspath} has non-audio, non-subtitle stream, likely an attachment, adding to queue'
-            line_len = '-' * len(line)
-    
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[TESTING] File {abspath} has non-audio, non-subtitle stream, likely an attachment, adding to queue'
+            logger_output(line)
 
             data['add_file_to_pending_tasks'] = True
             shared_info['has_attachment'] = True
@@ -224,25 +201,17 @@ def on_library_management_file_test(data):
         allowed_tags = ['language', 'DURATION', 'ENCODER']
         if not set(stream['tags'].keys()).issubset(allowed_tags):
             
-            line = f'File {abspath} has unwanted metadata, adding to queue'
-            line_len = '-' * len(line)
-
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[TESTING] File {abspath} has unwanted metadata, adding to queue'
+            logger_output(line)
 
             data['add_file_to_pending_tasks'] = True
             shared_info['has_unwanted_metadata'] = True
 
             return
-    
+
+    # If file passes all checks, it's skipped    
     line = f"File {abspath} doesn't need processing, skipping"
-    line_len = '-' * len(line)
-
-    logger.debug(line_len)
-    logger.debug(line)        
-    logger.debug(line_len)
-
+    logger_output(line)
     
     data['add_file_to_pending_tasks'] = False
     return
@@ -270,13 +239,10 @@ def on_worker_process(data):
     # Get the path to the file
     abspath = data['original_file_path']
 
-    line = f'Processing file {abspath}'
-    line_len = '-' * len(line)
+    line = f'[PROCESSING] Processing file {abspath}'
+    logger_output(line)
 
-    logger.debug(line_len)
-    logger.debug(line)
-    logger.debug(line_len)
-
+    # Defines working variables
     path, basename = os.path.split(abspath)   
     no_ext = os.path.splitext(basename)[0] 
     file_in = data['file_in']
@@ -297,90 +263,73 @@ def on_worker_process(data):
     parser.set_probe(probe)
     data['command_progress_parser'] = parser.parse_progress
 
+    # Tests if container is .mkv
+    # A second pass will be needed if this matches
     if os.path.splitext(abspath)[1] != '.mkv':
 
-        line = f'File {abspath} container is not .mkv, processing'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[PROCESSING] File {abspath} container is not .mkv, processing'
+        logger_output(line)
 
         data['exec_command'] = f'ffmpeg -i {file_in} -c copy {file_out}'
 
         return
         
+    # Checks the first video stream for x264
     for stream in ffprobe_data['streams']:
         
         if stream['codec_type'] == 'video' and stream['codec_name'] != 'h264':
 
-            line = f'File {abspath} video stream is not x264, setting video codec'
-            line_len = '-' * len(line)
-
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[PROCESSING] File {abspath} video stream is not x264, setting video codec'
+            logger_output(line)
 
             video_codec = '-c:v:0 h264'
             break
-
+            # This function doesn't return yet, as the file still needs to be checked for audio
+        
+    # Checks if the video stream is the first stream
     if ffprobe_data['streams'][0]['codec_type'] != 'video':
         
-        line = f'File {abspath} does not have video as the first stream, processing'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[PROCESSING] File {abspath} does not have video as the first stream, processing'
+        logger_output(line)
         
         for stream in data['streams']:
             if stream['codec_type'] == 'video':
                 data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
-
-        # This doesn't return yet, as a match with other cases is still possible
-
+    
+    # Checks if first audio stream is ac3
     if ffprobe_data['streams'][1]['codec_type'] == 'audio' and ffprobe_data['streams'][1]['codec_name'] != 'ac3':
         
-        line = f'File {abspath} does not have ac3 as the first audio stream, processing'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[PROCESSING] File {abspath} does not have ac3 as the first audio stream, processing'
+        logger_output(line)
 
         data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a:0 -c:a:0 ac3 -map 0:a:0 -c:a:1 copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
         
         return
-
+    
+    # If video check matches, processing starts after checking audio
     if video_codec == '-c:v:0 x264':
         
         data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
 
         return
 
+    # Checks if there are chapters
     if ffprobe_data['chapters'] != []:
 
-        line = f'File {abspath} has chapters, processing'
-        line_len = '-' * len(line)
-
-        logger.debug(line_len)
-        logger.debug(line)        
-        logger.debug(line_len)
+        line = f'[PROCESSING] File {abspath} has chapters, processing'
+        logger_output(line)
 
         data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
 
         return
     
+    # Checks streams for subtitles, attachments and metadata
     for stream in ffprobe_data['streams']:
        
         if stream['codec_type'] == 'subtitle':
             
-            line = f'File {abspath} has subtitles, processing'
-            line_len = '-' * len(line)
-    
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[PROCESSING] File {abspath} has subtitles, processing'
+            logger_output(line)
 
             data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
             
@@ -388,12 +337,8 @@ def on_worker_process(data):
        
         if stream['codec_type'] != 'audio' and stream['codec_type'] != 'video':
 
-            line = f'File {abspath} has non-audio, non-subtitle stream, likely an attachment, processing'
-            line_len = '-' * len(line)
-    
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[PROCESSING] File {abspath} has non-audio, non-subtitle stream, likely an attachment, processing'
+            logger_output(line)
 
             data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
 
@@ -402,12 +347,8 @@ def on_worker_process(data):
         allowed_tags = ['language', 'DURATION', 'ENCODER']
         if not set(stream['tags'].keys()).issubset(allowed_tags):
             
-            line = f'File {abspath} has unwanted metadata, processing'
-            line_len = '-' * len(line)
-
-            logger.debug(line_len)
-            logger.debug(line)        
-            logger.debug(line_len)
+            line = f'[PROCESSING] File {abspath} has unwanted metadata, processing'
+            logger_output(line)
 
             data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
             
@@ -433,16 +374,17 @@ def on_postprocessor_file_movement(data):
     :return:
     """
 
+    # Defines paths
     data['path'] = data['source_data']['abspath']
-
     abspath = data['path']
+    source_dirpath = f"{os.path.split(data['source_data']['abspath'])[0]}"
+    source_dirpath_replaced = source_dirpath.replace('\\', '/')
+    show_dir = source_dirpath_replaced.split('/')[-2]
+    basename = data['source_data']['basename']
 
-    line = f'Post-processing file {abspath}'
-    line_len = '-' * len(line)
 
-    logger.debug(line_len)
-    logger.debug(line)
-    logger.debug(line_len)
+    line = f'[POST-PROCESSING] Post-processing file {abspath}'
+    logger_output(line)
 
     # Get file probe
     probe = Probe.init_probe(data, logger, allowed_mimetypes=['video'])
@@ -452,47 +394,36 @@ def on_postprocessor_file_movement(data):
 
     ffprobe_data = probe.get_probe()
    
-    source_dirpath = f"{os.path.split(data['source_data']['abspath'])[0]}"
-    source_dirpath_replaced = source_dirpath.replace('\\', '/')
-    show_dir = source_dirpath_replaced.split('/')[-2]
-
+    # Sets function parameters
     data['remove_source_file'] = False
     data['copy_file'] = True
     data['run_default_file_copy'] = False
-    basename = data['source_data']['basename']
     data['file_out'] = f'{source_dirpath_replaced}/{basename}'
 
+    # Resets output location for files with a new container
     if os.path.splitext(abspath)[1] != '.mkv':
 
-        line = f'File {abspath} container is now .mkv, moving'
-        line_len = '-' * len(line)
-        
-        logger.debug(line_len)
-        logger.debug(line)
-        logger.debug(line_len)
+        line = f'[POST-PROCESSING] File {abspath} container is now .mkv, moving'
+        logger_output(line)
 
         data['remove_source_file'] = True
         data['run_default_file_copy'] = True
 
         return
 
+    # Sets Plex Optimized Versions as output folder for x264 transcodes
     for stream in ffprobe_data['streams']:
         
         if stream['codec_type'] == 'video' and stream['codec_name'] != 'h264':
 
-            line = f'File {abspath} video stream is not x264, setting different output'
-            line_len = '-' * len(line)
-
-            logger.debug(line_len)
-            logger.debug(line)
-            logger.debug(line_len)
+            line = f'[POST-PROCESSING] File {abspath} video stream is not x264, setting different output'
+            logger_output(line)
 
             os.makedirs(f'{source_dirpath_replaced}/Plex Versions/Optimized for TV/{show_dir}', exist_ok= True)
 
             data['file_out'] = f'{source_dirpath_replaced}/Plex Versions/Optimized for TV/{show_dir}/{basename}'
             
             break
-
 
     return
 
