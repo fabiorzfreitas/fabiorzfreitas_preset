@@ -1,6 +1,9 @@
-**<span style="color:#56adda">0.5.0</span>**
-- Implemented MKV remuxing
+**<span style="color:#56adda">1.0.0</span>**
+- Everything seems to be working. Further development will simply polish the code.
 
+**<span style="color:#56adda">0.5.0</span>**
+- Implemented MKV remuxing.
+- 
 **<span style="color:#56adda">0.4.0</span>**
 - Almost final, needs to implement cache settings and MKV remuxing to otherwise good files. This commit also predates the pull request to lib.ffmpeg.probe.py to add support for chapters.
 
