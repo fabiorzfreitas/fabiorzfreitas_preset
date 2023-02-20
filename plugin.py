@@ -210,7 +210,7 @@ def on_library_management_file_test(data):
             return
 
     # If file passes all checks, it's skipped    
-    line = f"File {abspath} doesn't need processing, skipping"
+    line = f"[TESTING] File {abspath} doesn't need processing, skipping"
     logger_output(line)
     
     data['add_file_to_pending_tasks'] = False
@@ -353,8 +353,6 @@ def on_worker_process(data):
             data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
             
             return
-
-    
 
     return
 

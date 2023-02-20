@@ -1,4 +1,7 @@
 **<span style="color:#56adda">1.1.0</span>**
+- Small fix on logger output.
+
+**<span style="color:#56adda">1.1.0</span>**
 - New logger output, comments on code. Could use type annotation and perhaps another post-processing runner.
 
 **<span style="color:#56adda">1.0.0</span>**
