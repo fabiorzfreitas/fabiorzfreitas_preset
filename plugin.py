@@ -208,6 +208,20 @@ def on_library_management_file_test(data):
             shared_info['has_unwanted_metadata'] = True
 
             return
+    
+    if os.path.splitext(abspath) != '.mkv':
+
+        line = f'File {abspath} container is not .mkv'
+        line_len = '-' * len(line)
+
+        logger.debug(line_len)
+        logger.debug(line)        
+        logger.debug(line_len)
+
+        data['add_file_to_pending_tasks'] = True
+        shared_info['container_is_not_mkv'] = True
+
+        return
 
     line = f"File {abspath} doesn't need processing, skipping"
     line_len = '-' * len(line)
@@ -373,6 +387,20 @@ def on_worker_process(data):
             data['exec_command'] = f'ffmpeg -i {file_in} -map 0:v:0 {video_codec} -map 0:a -c:a copy -sn -map_metadata -1 -map_chapters -1 {file_out}'
             
             return
+
+    if os.path.splitext(abspath) != '.mkv':
+
+        line = f'File {abspath} container is not .mkv'
+        line_len = '-' * len(line)
+
+        logger.debug(line_len)
+        logger.debug(line)        
+        logger.debug(line_len)
+
+        data['exec_command'] = f'ffmpeg -i {file_in} -c copy {file_out}'
+        
+        return
+
 
 
     return
